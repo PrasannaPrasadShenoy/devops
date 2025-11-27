@@ -2,16 +2,16 @@ pipeline {
     agent any
 
     environment {
-        VENV = "/opt/venv"   // venv created earlier inside Jenkins docker
+        VENV = "/opt/venv"       // Python Virtual Environment path
+        IMAGE_NAME = "flask-ci-cd-app"   // Docker Image name
     }
 
     stages {
 
         stage('Setup Python Virtual Env') {
             steps {
-                echo "Creating & Activating VENV..."
+                echo "🔹 Creating Virtual Environment (if missing) & Installing Dependencies"
                 sh '''
-                # Use bash explicitly so 'source' works
                 bash -c "
                 if [ ! -d $VENV ]; then
                     python3 -m venv $VENV
@@ -26,7 +26,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo "Installing dependencies in venv..."
+                echo "🔹 Installing Dependencies"
                 sh '''
                 bash -c "
                 source $VENV/bin/activate
@@ -38,7 +38,7 @@ pipeline {
 
         stage('Unit Test') {
             steps {
-                echo "Running unit tests..."
+                echo "🔹 Running Unit Tests"
                 sh '''
                 bash -c "
                 source $VENV/bin/activate
@@ -48,9 +48,19 @@ pipeline {
             }
         }
 
+        stage('Build Docker Image') {
+            steps {
+                echo "🐳 Building Docker Image"
+                sh '''
+                docker build -t $IMAGE_NAME:latest .
+                docker images | grep $IMAGE_NAME
+                '''
+            }
+        }
+
         stage('Deploy') {
             steps {
-                echo "Deploying application..."
+                echo "🔹 Deploying Application to Workspace Directory"
                 sh '''
                 mkdir -p python-app-deploy
                 cp app.py python-app-deploy/
@@ -60,7 +70,7 @@ pipeline {
 
         stage('Run Flask App') {
             steps {
-                echo "Launching Flask in background..."
+                echo "🚀 Starting Flask Application"
                 sh '''
                 bash -c "
                 source $VENV/bin/activate
@@ -73,7 +83,7 @@ pipeline {
 
         stage('Post-Deployment Test') {
             steps {
-                echo "Testing Application After Deployment..."
+                echo "🔍 Running Tests After Deployment"
                 sh '''
                 bash -c "
                 source $VENV/bin/activate
@@ -85,8 +95,12 @@ pipeline {
     }
 
     post {
-        success { echo "🚀 Pipeline Completed Successfully! All Stages Passed." }
-        failure { echo "❌ Pipeline Failed — Fix above errors." }
+        success {
+            echo "🎉 PIPELINE SUCCESS — CI/CD COMPLETED!"
+        }
+        failure {
+            echo "❌ PIPELINE FAILED — CHECK STAGE OUTPUTS!"
+        }
     }
 }
 
